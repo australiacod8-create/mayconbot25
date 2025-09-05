@@ -1,6 +1,6 @@
 <?php
 // Bot configuration
-define('BOT_TOKEN', getenv('BOT_TOKEN') ?: 'Place_Your_Token_Here');
+define('BOT_TOKEN', getenv('BOT_TOKEN') ?: 'Coloque_Seu_Token_Aqui');
 define('API_URL', 'https://api.telegram.org/bot' . BOT_TOKEN . '/');
 define('USERS_FILE', 'users.json');
 define('ERROR_LOG', 'error.log');
@@ -12,7 +12,7 @@ function initializeBot() {
         file_get_contents(API_URL . 'setWebhook?url=' . urlencode($webhook_url));
         return true;
     } catch (Exception $e) {
-        logError("Initialization failed: " . $e->getMessage());
+        logError("Falha na inicialização: " . $e->getMessage());
         return false;
     }
 }
@@ -31,7 +31,7 @@ function loadUsers() {
         }
         return json_decode(file_get_contents(USERS_FILE), true) ?: [];
     } catch (Exception $e) {
-        logError("Load users failed: " . $e->getMessage());
+        logError("Falha ao carregar usuários: " . $e->getMessage());
         return [];
     }
 }
@@ -41,7 +41,7 @@ function saveUsers($users) {
         file_put_contents(USERS_FILE, json_encode($users, JSON_PRETTY_PRINT));
         return true;
     } catch (Exception $e) {
-        logError("Save users failed: " . $e->getMessage());
+        logError("Falha ao salvar usuários: " . $e->getMessage());
         return false;
     }
 }
@@ -65,7 +65,7 @@ function sendMessage($chat_id, $text, $keyboard = null) {
         file_get_contents($url);
         return true;
     } catch (Exception $e) {
-        logError("Send message failed: " . $e->getMessage());
+        logError("Falha ao enviar mensagem: " . $e->getMessage());
         return false;
     }
 }
@@ -73,9 +73,9 @@ function sendMessage($chat_id, $text, $keyboard = null) {
 // Main keyboard
 function getMainKeyboard() {
     return [
-        [['text' => '💰 Earn', 'callback_data' => 'earn'], ['text' => '💳 Balance', 'callback_data' => 'balance']],
-        [['text' => '🏆 Leaderboard', 'callback_data' => 'leaderboard'], ['text' => '👥 Referrals', 'callback_data' => 'referrals']],
-        [['text' => '🏧 Withdraw', 'callback_data' => 'withdraw'], ['text' => '❓ Help', 'callback_data' => 'help']]
+        [['text' => '💰 Ganhar', 'callback_data' => 'earn'], ['text' => '💳 Saldo', 'callback_data' => 'balance']],
+        [['text' => '🏆 Ranking', 'callback_data' => 'leaderboard'], ['text' => '👥 Indicações', 'callback_data' => 'referrals']],
+        [['text' => '🏧 Sacar', 'callback_data' => 'withdraw'], ['text' => '❓ Ajuda', 'callback_data' => 'help']]
     ];
 }
 
@@ -106,13 +106,13 @@ function processUpdate($update) {
                         $users[$chat_id]['referred_by'] = $id;
                         $users[$id]['referrals']++;
                         $users[$id]['balance'] += 50; // Referral bonus
-                        sendMessage($id, "🎉 New referral! +50 points bonus!");
+                        sendMessage($id, "🎉 Nova indicação! Bônus de 50 pontos!");
                         break;
                     }
                 }
             }
             
-            $msg = "Welcome to Earning Bot!\nEarn points, invite friends, and withdraw your earnings!\nYour referral code: <b>{$users[$chat_id]['ref_code']}</b>";
+            $msg = "Bem-vindo ao Bot de Ganhos!\nGanhe pontos, convide amigos e retire seus ganhos!\nSeu código de indicação: <b>{$users[$chat_id]['ref_code']}</b>";
             sendMessage($chat_id, $msg, getMainKeyboard());
         }
         
@@ -135,48 +135,48 @@ function processUpdate($update) {
                 $time_diff = time() - $users[$chat_id]['last_earn'];
                 if ($time_diff < 60) {
                     $remaining = 60 - $time_diff;
-                    $msg = "⏳ Please wait $remaining seconds before earning again!";
+                    $msg = "⏳ Aguarde $remaining segundos para ganhar novamente!";
                 } else {
                     $earn = 10;
                     $users[$chat_id]['balance'] += $earn;
                     $users[$chat_id]['last_earn'] = time();
-                    $msg = "✅ You earned $earn points!\nNew balance: {$users[$chat_id]['balance']}";
+                    $msg = "✅ Você ganhou $earn pontos!\nNovo saldo: {$users[$chat_id]['balance']}";
                 }
                 break;
                 
             case 'balance':
-                $msg = "💳 Your Balance\nPoints: {$users[$chat_id]['balance']}\nReferrals: {$users[$chat_id]['referrals']}";
+                $msg = "💳 Seu Saldo\nPontos: {$users[$chat_id]['balance']}\nIndicações: {$users[$chat_id]['referrals']}";
                 break;
                 
             case 'leaderboard':
                 $sorted = array_column($users, 'balance');
                 arsort($sorted);
                 $top = array_slice($sorted, 0, 5, true);
-                $msg = "🏆 Top Earners\n";
+                $msg = "🏆 Top Ganhadores\n";
                 $i = 1;
                 foreach ($top as $id => $bal) {
-                    $msg .= "$i. User $id: $bal points\n";
+                    $msg .= "$i. Usuário $id: $bal pontos\n";
                     $i++;
                 }
                 break;
                 
             case 'referrals':
-                $msg = "👥 Referral System\nYour code: <b>{$users[$chat_id]['ref_code']}</b>\nReferrals: {$users[$chat_id]['referrals']}\nInvite link: t.me/" . BOT_TOKEN . "?start={$users[$chat_id]['ref_code']}\n50 points per referral!";
+                $msg = "👥 Sistema de Indicação\nSeu código: <b>{$users[$chat_id]['ref_code']}</b>\nIndicações: {$users[$chat_id]['referrals']}\nLink de convite: t.me/" . BOT_TOKEN . "?start={$users[$chat_id]['ref_code']}\n50 pontos por indicação!";
                 break;
                 
             case 'withdraw':
                 $min = 100;
                 if ($users[$chat_id]['balance'] < $min) {
-                    $msg = "🏧 Withdrawal\nMinimum: $min points\nYour balance: {$users[$chat_id]['balance']}\nNeed " . ($min - $users[$chat_id]['balance']) . " more points!";
+                    $msg = "🏧 Saque\nMínimo: $min pontos\nSeu saldo: {$users[$chat_id]['balance']}\nFaltam " . ($min - $users[$chat_id]['balance']) . " pontos!";
                 } else {
                     $amount = $users[$chat_id]['balance'];
                     $users[$chat_id]['balance'] = 0;
-                    $msg = "🏧 Withdrawal of $amount points requested!\nOur team will process it soon.";
+                    $msg = "🏧 Saque de $amount pontos solicitado!\nNossa equipe processará em breve.";
                 }
                 break;
                 
             case 'help':
-                $msg = "❓ Help\n💰 Earn: Get 10 points/min\n👥 Refer: 50 points/ref\n🏧 Withdraw: Min 100 points\nUse buttons below to navigate!";
+                $msg = "❓ Ajuda\n💰 Ganhar: Receba 10 pontos/min\n👥 Indicar: 50 pontos/indicação\n🏧 Sacar: Mín 100 pontos\nUse os botões abaixo para navegar!";
                 break;
         }
         
@@ -197,14 +197,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "OK";
     } else {
         http_response_code(400);
-        echo "Invalid request";
+        echo "Requisição inválida";
     }
 } else {
     // Set webhook on first visit
     if (initializeBot()) {
-        echo "Webhook set successfully!";
+        echo "Webhook configurado com sucesso!";
     } else {
-        echo "Failed to set webhook. Check error.log";
+        echo "Falha ao configurar webhook. Verifique error.log";
     }
 }
 ?>
