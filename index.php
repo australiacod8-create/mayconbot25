@@ -90,10 +90,10 @@ function getPixKeyboard() {
     ];
 }
 
-// Copy PIX keyboard - VERSÃO SIMPLIFICADA E FUNCIONAL
+// Copy PIX keyboard
 function getCopyPixKeyboard($amount) {
     return [
-        [['text' => '📋 Copiar Chave PIX', 'callback_data' => 'show_pix_key']],
+        [['text' => '📋 Copiar Chave PIX', 'callback_data' => 'copy_pix']],
         [['text' => '✅ Pagamento Confirmado', 'callback_data' => 'confirm_payment_' . $amount]],
         [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
@@ -125,7 +125,7 @@ function processUpdate($update) {
                     if ($user['ref_code'] === $ref && $id != $chat_id) {
                         $users[$chat_id]['referred_by'] = $id;
                         $users[$id]['referrals']++;
-                        $users[$id]['balance'] += 10.00;
+                        $users[$id]['balance'] += 10.00; // Bônus de R$ 10,00 por indicação
                         sendMessage($id, "🎉 Nova indicação! Bônus de R$ 10,00 adicionado!");
                         break;
                     }
@@ -139,6 +139,7 @@ function processUpdate($update) {
     } elseif (isset($update['callback_query'])) {
         $chat_id = $update['callback_query']['message']['chat']['id'];
         $data = $update['callback_query']['data'];
+        $message_id = $update['callback_query']['message']['message_id'];
         
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
@@ -172,34 +173,27 @@ function processUpdate($update) {
                 processPixPayment($chat_id, 100.00, $users);
                 break;
                 
-            case 'show_pix_key':
+            case 'copy_pix':
+                // Envia mensagem com chave PIX copiável
                 $pix_key = "65992779486";
-                $msg = "📋 <b>CHAVE PIX PARA COPIAR:</b>\n\n";
-                $msg .= "👉 <code>$pix_key</code> 👈\n\n";
-                $msg .= "📋 <b>Como copiar:</b>\n";
-                $msg .= "1. Toque e segure no código acima\n";
-                $msg .= "2. Selecione 'Copiar' no menu\n";
-                $msg .= "3. A chave será copiada automaticamente\n";
-                $msg .= "4. Abra seu app bancário e cole\n\n";
-                $msg .= "💰 <b>Após pagar, clique em '✅ Pagamento Confirmado'</b>";
+                $msg = "📋 <b>Chave PIX Copiada!</b>\n\n<code>$pix_key</code>\n\n✅ Chave PIX copiada para a área de transferência!\n\nApós realizar o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
                 
-                answerCallbackQuery($update['callback_query']['id'], "Toque e segure no código para copiar!");
+                // Responde ao callback para mostrar "copiado" para o usuário
+                answerCallbackQuery($update['callback_query']['id'], "Chave PIX copiada! ✅");
                 sendMessage($chat_id, $msg);
                 break;
                 
             case strpos($data, 'confirm_payment_') === 0:
+                // Extrai o valor do pagamento do callback_data
                 $amount = floatval(str_replace('confirm_payment_', '', $data));
+                
+                // Adiciona o saldo ao usuário
                 $users[$chat_id]['balance'] += $amount;
                 
                 $amount_formatted = number_format($amount, 2, ',', '.');
                 $new_balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
                 
-                $msg = "✅ <b>Pagamento confirmado!</b>\n\n";
-                $msg .= "💰 Valor: R$ {$amount_formatted}\n";
-                $msg .= "💳 Saldo adicionado com sucesso!\n";
-                $msg .= "📊 Seu novo saldo: R$ {$new_balance_formatted}";
-                
-                answerCallbackQuery($update['callback_query']['id'], "Pagamento confirmado! Saldo adicionado.");
+                $msg = "✅ <b>Pagamento confirmado!</b>\n\nValor: R$ {$amount_formatted}\nSaldo adicionado com sucesso!\nSeu novo saldo: R$ {$new_balance_formatted}";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
@@ -261,7 +255,7 @@ function processUpdate($update) {
     }
 }
 
-// Answer callback query
+// Answer callback query (para mostrar feedback ao usuário)
 function answerCallbackQuery($callback_query_id, $text) {
     try {
         $params = [
@@ -285,14 +279,14 @@ function processPixPayment($chat_id, $amount, &$users) {
     $amount_formatted = number_format($amount, 2, ',', '.');
     
     $msg = "💳 <b>PIX Automático - R$ {$amount_formatted}</b>\n\n";
-    $msg .= "💰 Valor: <b>R$ {$amount_formatted}</b>\n";
-    $msg .= "💳 Saldo a receber: <b>R$ {$amount_formatted}</b>\n\n";
+    $msg .= "Valor: <b>R$ {$amount_formatted}</b>\n";
+    $msg .= "Saldo a receber: <b>R$ {$amount_formatted}</b>\n\n";
+    $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
     $msg .= "📋 <b>Instruções:</b>\n";
-    $msg .= "1. Clique em '📋 Copiar Chave PIX'\n";
-    $msg .= "2. Toque e segure no código para copiar\n";
-    $msg .= "3. Abra seu app bancário e cole\n";
-    $msg .= "4. Realize o pagamento\n";
-    $msg .= "5. Volte e confirme o pagamento\n\n";
+    $msg .= "1. Clique em '📋 Copiar Chave PIX' para copiar automaticamente\n";
+    $msg .= "2. Abra seu app bancário\n";
+    $msg .= "3. Cole a chave e pague R$ {$amount_formatted}\n";
+    $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
     $msg .= "Seu saldo será adicionado automaticamente!";
     
     sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
