@@ -187,10 +187,16 @@ function processUpdate($update) {
         $data = $update['callback_query']['data'];
         $message_id = $update['callback_query']['message']['message_id'];
         
+        // Obter informações do usuário a partir do callback_query
+        $from = $update['callback_query']['from'];
+        $first_name = $from['first_name'] ?? '';
+        $last_name = $from['last_name'] ?? '';
+        $username = $from['username'] ?? '';
+        
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
-                'name' => '',
-                'username' => '',
+                'name' => trim("$first_name $last_name"),
+                'username' => $username,
                 'balance' => 0.00,
                 'last_earn' => 0,
                 'referrals' => 0,
@@ -198,6 +204,10 @@ function processUpdate($update) {
                 'ref_code' => substr(md5($chat_id . time()), 0, 8),
                 'referred_by' => null
             ];
+        } else {
+            // Atualizar informações do usuário
+            $users[$chat_id]['name'] = trim("$first_name $last_name");
+            $users[$chat_id]['username'] = $username;
         }
         
         switch ($data) {
