@@ -1,4 +1,10 @@
 .env
-__pycache__/
 *.pyc
+__pycache__/
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
 *.sqlite
+venv/
