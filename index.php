@@ -91,10 +91,9 @@ function getPixKeyboard() {
     ];
 }
 
-// Copy PIX keyboard
-function getCopyPixKeyboard($amount) {
+// PIX confirmation keyboard
+function getPixConfirmationKeyboard($amount) {
     return [
-        [['text' => '📋 Copiar Chave PIX', 'callback_data' => 'copy_pix']],
         [['text' => '✅ Pagamento Confirmado', 'callback_data' => 'confirm_payment_' . $amount]],
         [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
@@ -223,16 +222,6 @@ function processUpdate($update) {
                 processPixPayment($chat_id, 100.00, $users);
                 break;
                 
-            case 'copy_pix':
-                // Envia mensagem com chave PIX copiável
-                $pix_key = PIX_KEY;
-                $msg = "📋 <b>Chave PIX Copiada!</b>\n\n<code>$pix_key</code>\n\n✅ Chave PIX copiada para a área de transferência!\n\nApós realizar o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
-                
-                // Responde ao callback para mostrar "copiado" para o usuário
-                answerCallbackQuery($update['callback_query']['id'], "Chave PIX copiada! ✅");
-                sendMessage($chat_id, $msg);
-                break;
-                
             case strpos($data, 'confirm_payment_') === 0:
                 // Extrai o valor do pagamento do callback_data
                 $amount = floatval(str_replace('confirm_payment_', '', $data));
@@ -344,16 +333,19 @@ function processPixPayment($chat_id, $amount, &$users) {
     $msg .= "💰 Valor: R$ {$amount_formatted}\n\n";
     $msg .= "ID da compra: {$transaction_id}\n\n";
     $msg .= "━━━━━━━━━━━━━━━━━━━\n\n";
-    $msg .= "Este código \"copia e cola\" é válido para apenas 1 pagamento!\n";
-    $msg .= "Ou seja, se você utilizar ele mais de 1 vez para adicionar saldo, você PERDERÁ o saldo e não tem direito a reembolso!\n\n";
-    $msg .= "PIX copia e cola:\n";
-    $msg .= "Clique no código para copiá-lo.\n\n";
-    $msg .= "<b>copiar</b>\n";
+    $msg .= "Este código PIX é válido para apenas 1 pagamento!\n";
+    $msg .= "Se você utilizar ele mais de 1 vez, PERDERÁ o saldo e não tem direito a reembolso!\n\n";
+    $msg .= "📋 <b>CHAVE PIX:</b>\n";
     $msg .= "<code>{$pix_key}</code>\n\n";
-    $msg .= "━━━━━━━━━━━━━━━━━━━\n\n";
-    $msg .= "✅ Após o pagamento ser efetuado, seu saldo será liberado instantaneamente.";
+    $msg .= "📋 <b>Como copiar:</b>\n";
+    $msg .= "1. Toque e segure no código acima\n";
+    $msg .= "2. Selecione 'Copiar' no menu\n";
+    $msg .= "3. Abra seu app bancário e cole a chave\n";
+    $msg .= "4. Realize o pagamento de R$ {$amount_formatted}\n";
+    $msg .= "5. Volte aqui e confirme o pagamento\n\n";
+    $msg .= "✅ Após o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
     
-    sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
+    sendMessage($chat_id, $msg, getPixConfirmationKeyboard($amount));
 }
 
 // Webhook handler
