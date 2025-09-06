@@ -1,3 +1,5 @@
+[file name]: index.php
+[file content begin]
 <?php
 // Bot configuration
 define('BOT_TOKEN', getenv('BOT_TOKEN') ?: 'Coloque_Seu_Token_Aqui');
@@ -105,11 +107,16 @@ function processUpdate($update) {
     
     if (isset($update['message'])) {
         $chat_id = $update['message']['chat']['id'];
+        $first_name = $update['message']['chat']['first_name'] ?? '';
+        $last_name = $update['message']['chat']['last_name'] ?? '';
+        $username = $update['message']['chat']['username'] ?? '';
         $text = trim($update['message']['text'] ?? '');
         
         // Create new user if doesn't exist
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
+                'name' => trim("$first_name $last_name"),
+                'username' => $username,
                 'balance' => 0.00,
                 'last_earn' => 0,
                 'referrals' => 0,
@@ -132,8 +139,28 @@ function processUpdate($update) {
                 }
             }
             
-            $msg = "Bem-vindo ao Bot de Ganhos!\nGanhe dinheiro, convide amigos e compre itens!\nSeu código de indicação: <b>{$users[$chat_id]['ref_code']}</b>";
-            sendMessage($chat_id, $msg, getMainKeyboard());
+            // Mensagem de boas-vindas
+            $welcome_msg = "Bem-vindo(a) à nossa loja de streaming!\n";
+            $welcome_msg .= "Prepare-se para uma experiência de maratona incrível com seus filmes e séries preferidos. Antes de prosseguir, confira a disponibilidade da conta que você deseja em nosso catálogo.\n\n";
+            $welcome_msg .= "É importante saber que não fazemos reembolsos via PIX, apenas com saldo no bot. Por favor, escolha seu serviço com cuidado.\n\n";
+            $welcome_msg .= "Se não encontrou o que procurava, nosso suporte está à disposição para te ajudar rapidamente. Entre em contato conosco: @Dogdoslinks00.\n\n";
+            
+            // Detalhes da conta
+            $balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
+            $account_msg = "_________________________________________________\n";
+            $account_msg .= "Detalhes da sua conta:\n\n";
+            $account_msg .= "Nome: " . ($users[$chat_id]['name'] ?: 'Não informado') . "\n\n";
+            $account_msg .= "ID: $chat_id\n\n";
+            $account_msg .= "Saldo: R$ $balance_formatted\n\n";
+            $account_msg .= "Pontos de indicação: 0,00\n\n";
+            $account_msg .= "Pessoas indicadas: " . $users[$chat_id]['referrals'] . "\n";
+            $account_msg .= "_________________________________________________";
+            
+            // Enviar mensagem de boas-vindas
+            sendMessage($chat_id, $welcome_msg);
+            
+            // Enviar detalhes da conta com teclado
+            sendMessage($chat_id, $account_msg, getMainKeyboard());
         }
         
     } elseif (isset($update['callback_query'])) {
@@ -143,6 +170,8 @@ function processUpdate($update) {
         
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
+                'name' => '',
+                'username' => '',
                 'balance' => 0.00,
                 'last_earn' => 0,
                 'referrals' => 0,
@@ -314,3 +343,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+[file content end]
