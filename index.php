@@ -73,28 +73,41 @@ function sendMessage($chat_id, $text, $keyboard = null) {
 // Main keyboard
 function getMainKeyboard() {
     return [
-        [['text' => '💰 Adicionar saldo', 'callback_data' => 'earn'], ['text' => '💳 Perfil', 'callback_data' => 'balance']],
-        [['text' => '🏆 Ranking', 'callback_data' => 'leaderboard'], ['text' => '👥 Indicações', 'callback_data' => 'referrals']],
-        [['text' => '🏧 Comprar', 'callback_data' => 'withdraw'], ['text' => '❓ Ajuda', 'callback_data' => 'help']]
+        [['text' => '🎬 Canais TV', 'callback_data' => 'tv_channels']],
+        [['text' => '🎥 Canais Filmes', 'callback_data' => 'movie_channels']],
+        [['text' => '⚽ Canais Esportes', 'callback_data' => 'sports_channels']],
+        [['text' => '💰 Adicionar Saldo', 'callback_data' => 'add_balance'], ['text' => '👤 Meu Perfil', 'callback_data' => 'profile']],
+        [['text' => '📞 Suporte', 'url' => 'https://t.me/suporte_latina']]
+    ];
+}
+
+// TV Channels keyboard
+function getTvChannelsKeyboard() {
+    return [
+        [['text' => '📺 Globo', 'callback_data' => 'channel_globo']],
+        [['text' => '📺 Record', 'callback_data' => 'channel_record']],
+        [['text' => '📺 SBT', 'callback_data' => 'channel_sbt']],
+        [['text' => '📺 Band', 'callback_data' => 'channel_band']],
+        [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
 }
 
 // PIX keyboard
 function getPixKeyboard() {
     return [
-        [['text' => 'R$ 10,00 (100 pontos)', 'callback_data' => 'pix_10']],
-        [['text' => 'R$ 20,00 (200 pontos)', 'callback_data' => 'pix_20']],
-        [['text' => 'R$ 50,00 (500 pontos)', 'callback_data' => 'pix_50']],
-        [['text' => 'R$ 100,00 (1000 pontos)', 'callback_data' => 'pix_100']],
+        [['text' => 'R$ 10,00 (7 dias)', 'callback_data' => 'pix_10']],
+        [['text' => 'R$ 20,00 (15 dias)', 'callback_data' => 'pix_20']],
+        [['text' => 'R$ 30,00 (30 dias)', 'callback_data' => 'pix_30']],
+        [['text' => 'R$ 50,00 (60 dias)', 'callback_data' => 'pix_50']],
         [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
 }
 
 // Copy PIX keyboard
-function getCopyPixKeyboard() {
+function getCopyPixKeyboard($amount, $days) {
     return [
-        [['text' => '📋 Copiar PIX', 'callback_data' => 'copy_pix']],
-        [['text' => '✅ Pagamento Confirmado', 'callback_data' => 'confirm_payment']],
+        [['text' => '📋 Copiar Chave PIX', 'callback_data' => 'copy_pix']],
+        [['text' => '✅ Já Paguei', 'callback_data' => 'confirm_payment_' . $amount]],
         [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
 }
@@ -111,7 +124,8 @@ function processUpdate($update) {
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
                 'balance' => 0,
-                'last_earn' => 0,
+                'plan_days' => 0,
+                'plan_expiry' => time(),
                 'referrals' => 0,
                 'ref_code' => substr(md5($chat_id . time()), 0, 8),
                 'referred_by' => null
@@ -125,14 +139,25 @@ function processUpdate($update) {
                     if ($user['ref_code'] === $ref && $id != $chat_id) {
                         $users[$chat_id]['referred_by'] = $id;
                         $users[$id]['referrals']++;
-                        $users[$id]['balance'] += 50; // Referral bonus
-                        sendMessage($id, "🎉 Nova indicação! Bônus de 50 pontos!");
+                        $users[$id]['balance'] += 5; // Referral bonus
+                        sendMessage($id, "🎉 Nova indicação! +5 dias de bônus!");
                         break;
                     }
                 }
             }
             
-            $msg = "Bem-vindo ao Bot de Ganhos!\nGanhe pontos, convide amigos e compre itens!\nSeu código de indicação: <b>{$users[$chat_id]['ref_code']}</b>";
+            $msg = "📺 <b>Bem-vindo ao Latina Streaming!</b>\n\n";
+            $msg .= "Acesse os melhores canais de TV, filmes e esportes!\n\n";
+            $msg .= "💎 Seu código de indicação: <code>{$users[$chat_id]['ref_code']}</code>\n";
+            $msg .= "👥 Indicações: {$users[$chat_id]['referrals']}\n";
+            
+            if ($users[$chat_id]['plan_expiry'] > time()) {
+                $expiry_date = date('d/m/Y', $users[$chat_id]['plan_expiry']);
+                $msg .= "⏳ Plano ativo até: $expiry_date\n";
+            } else {
+                $msg .= "❌ Plano expirado. Adquira um novo plano!\n";
+            }
+            
             sendMessage($chat_id, $msg, getMainKeyboard());
         }
         
@@ -143,7 +168,8 @@ function processUpdate($update) {
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
                 'balance' => 0,
-                'last_earn' => 0,
+                'plan_days' => 0,
+                'plan_expiry' => time(),
                 'referrals' => 0,
                 'ref_code' => substr(md5($chat_id . time()), 0, 8),
                 'referred_by' => null
@@ -151,34 +177,102 @@ function processUpdate($update) {
         }
         
         switch ($data) {
-            case 'earn':
-                $msg = "💳 <b>Adicionar Saldo via PIX</b>\n\nEscolha o valor que deseja adicionar:";
+            case 'tv_channels':
+            case 'movie_channels':
+            case 'sports_channels':
+                if ($users[$chat_id]['plan_expiry'] > time()) {
+                    $channel_type = str_replace('_channels', '', $data);
+                    $msg = "📡 <b>Selecione um canal " . ucfirst($channel_type) . ":</b>";
+                    sendMessage($chat_id, $msg, getTvChannelsKeyboard());
+                } else {
+                    $msg = "❌ <b>Plano expirado!</b>\n\n";
+                    $msg .= "Para acessar os canais, você precisa de um plano ativo.\n";
+                    $msg .= "Clique em '💰 Adicionar Saldo' para adquirir um novo plano.";
+                    sendMessage($chat_id, $msg, getMainKeyboard());
+                }
+                break;
+                
+            case 'add_balance':
+                $msg = "💳 <b>Planos Disponíveis</b>\n\n";
+                $msg .= "Escolha o plano que deseja adquirir:\n\n";
+                $msg .= "🎁 R$ 10,00 - Plano 7 dias\n";
+                $msg .= "🎁 R$ 20,00 - Plano 15 dias\n";
+                $msg .= "🎁 R$ 30,00 - Plano 30 dias\n";
+                $msg .= "🎁 R$ 50,00 - Plano 60 dias\n\n";
+                $msg .= "💎 Use o código de indicação para ganhar dias extras!";
                 sendMessage($chat_id, $msg, getPixKeyboard());
                 break;
                 
             case 'pix_10':
-                processPixPayment($chat_id, 10, 100, $users);
+                processPixPayment($chat_id, 10, 7, $users);
                 break;
                 
             case 'pix_20':
-                processPixPayment($chat_id, 20, 200, $users);
+                processPixPayment($chat_id, 20, 15, $users);
+                break;
+                
+            case 'pix_30':
+                processPixPayment($chat_id, 30, 30, $users);
                 break;
                 
             case 'pix_50':
-                processPixPayment($chat_id, 50, 500, $users);
-                break;
-                
-            case 'pix_100':
-                processPixPayment($chat_id, 100, 1000, $users);
+                processPixPayment($chat_id, 50, 60, $users);
                 break;
                 
             case 'copy_pix':
-                $msg = "📋 <b>Chave PIX Copiada!</b>\n\n65992779486\n\nApós realizar o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
-                sendMessage($chat_id, $msg, getCopyPixKeyboard());
+                $msg = "📋 <b>Chave PIX Copiada!</b>\n\n";
+                $msg .= "<code>65992779486</code>\n\n";
+                $msg .= "📝 <b>Instruções:</b>\n";
+                $msg .= "1. Copie a chave PIX acima\n";
+                $msg .= "2. Abra seu app bancário\n";
+                $msg .= "3. Cole a chave no PIX\n";
+                $msg .= "4. Efetue o pagamento\n";
+                $msg .= "5. Clique em '✅ Já Paguei'\n\n";
+                $msg .= "⏳ Seu plano será ativado em até 5 minutos!";
+                sendMessage($chat_id, $msg);
                 break;
                 
-            case 'confirm_payment':
-                $msg = "✅ <b>Pagamento confirmado!</b>\n\nSeu saldo será adicionado em breve. Caso não receba em 5 minutos, entre em contato com o suporte.";
+            case strpos($data, 'confirm_payment_') === 0:
+                $amount = str_replace('confirm_payment_', '', $data);
+                $days = 0;
+                
+                switch ($amount) {
+                    case 10: $days = 7; break;
+                    case 20: $days = 15; break;
+                    case 30: $days = 30; break;
+                    case 50: $days = 60; break;
+                }
+                
+                // Atualizar plano do usuário
+                $current_time = time();
+                if ($users[$chat_id]['plan_expiry'] > $current_time) {
+                    $users[$chat_id]['plan_expiry'] += $days * 24 * 60 * 60;
+                } else {
+                    $users[$chat_id]['plan_expiry'] = $current_time + ($days * 24 * 60 * 60);
+                }
+                
+                $expiry_date = date('d/m/Y', $users[$chat_id]['plan_expiry']);
+                $msg = "✅ <b>Pagamento confirmado!</b>\n\n";
+                $msg .= "Plano de $days dias ativado com sucesso!\n";
+                $msg .= "⏳ Expira em: $expiry_date\n\n";
+                $msg .= "📺 Agora você pode acessar todos os canais!";
+                sendMessage($chat_id, $msg, getMainKeyboard());
+                break;
+                
+            case 'profile':
+                $msg = "👤 <b>Meu Perfil</b>\n\n";
+                $msg .= "💎 Código: <code>{$users[$chat_id]['ref_code']}</code>\n";
+                $msg .= "👥 Indicações: {$users[$chat_id]['referrals']}\n";
+                
+                if ($users[$chat_id]['plan_expiry'] > time()) {
+                    $expiry_date = date('d/m/Y', $users[$chat_id]['plan_expiry']);
+                    $msg .= "✅ Status: Plano Ativo\n";
+                    $msg .= "⏳ Expira em: $expiry_date\n";
+                } else {
+                    $msg .= "❌ Status: Plano Expirado\n";
+                    $msg .= "💳 Adquira um novo plano!\n";
+                }
+                
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
@@ -187,44 +281,20 @@ function processUpdate($update) {
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
-            case 'balance':
-                $msg = "💳 Seu Perfil\nPontos: {$users[$chat_id]['balance']}\nIndicações: {$users[$chat_id]['referrals']}";
-                sendMessage($chat_id, $msg, getMainKeyboard());
-                break;
-                
-            case 'leaderboard':
-                $sorted = array_column($users, 'balance');
-                arsort($sorted);
-                $top = array_slice($sorted, 0, 5, true);
-                $msg = "🏆 Top Ganhadores\n";
-                $i = 1;
-                foreach ($top as $id => $bal) {
-                    $msg .= "$i. Usuário $id: $bal pontos\n";
-                    $i++;
-                }
-                sendMessage($chat_id, $msg, getMainKeyboard());
-                break;
-                
-            case 'referrals':
-                $msg = "👥 Sistema de Indicação\nSeu código: <b>{$users[$chat_id]['ref_code']}</b>\nIndicações: {$users[$chat_id]['referrals']}\nLink de convite: t.me/" . BOT_TOKEN . "?start={$users[$chat_id]['ref_code']}\n50 pontos por indicação!";
-                sendMessage($chat_id, $msg, getMainKeyboard());
-                break;
-                
-            case 'withdraw':
-                $min = 100;
-                if ($users[$chat_id]['balance'] < $min) {
-                    $msg = "🏧 Comprar\nMínimo: $min pontos\nSeu saldo: {$users[$chat_id]['balance']}\nFaltam " . ($min - $users[$chat_id]['balance']) . " pontos!";
+            case strpos($data, 'channel_') === 0:
+                if ($users[$chat_id]['plan_expiry'] > time()) {
+                    $channel = str_replace('channel_', '', $data);
+                    $msg = "📡 <b>Canal " . ucfirst($channel) . "</b>\n\n";
+                    $msg .= "🔗 Link: https://stream.latinatv.com/" . $channel . "\n";
+                    $msg .= "📺 Acesse pelo seu aplicativo preferido!\n\n";
+                    $msg .= "💡 Dica: Salve o link para acessar rapidamente!";
+                    sendMessage($chat_id, $msg);
                 } else {
-                    $amount = $users[$chat_id]['balance'];
-                    $users[$chat_id]['balance'] = 0;
-                    $msg = "🏧 Compra de $amount pontos realizada!\nSeus itens serão entregues em breve.";
+                    $msg = "❌ <b>Plano expirado!</b>\n\n";
+                    $msg .= "Para acessar os canais, você precisa de um plano ativo.\n";
+                    $msg .= "Clique em '💰 Adicionar Saldo' para adquirir um novo plano.";
+                    sendMessage($chat_id, $msg, getMainKeyboard());
                 }
-                sendMessage($chat_id, $msg, getMainKeyboard());
-                break;
-                
-            case 'help':
-                $msg = "❓ Ajuda\n💰 Adicionar saldo: Recarregue via PIX\n👥 Indicar: 50 pontos/indicação\n🏧 Comprar: Mín 100 pontos\nUse os botões abaixo para navegar!";
-                sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
         }
         
@@ -233,20 +303,21 @@ function processUpdate($update) {
 }
 
 // Process PIX payment
-function processPixPayment($chat_id, $amount, $points, &$users) {
+function processPixPayment($chat_id, $amount, $days, &$users) {
     $pix_key = "65992779486";
-    $msg = "💳 <b>PIX Automático - R$ $amount,00</b>\n\n";
-    $msg .= "Valor: <b>R$ $amount,00</b>\n";
-    $msg .= "Pontos a receber: <b>$points</b>\n\n";
+    $msg = "💳 <b>Pagamento via PIX - R$ $amount,00</b>\n\n";
+    $msg .= "Plano: <b>$days dias</b>\n";
+    $msg .= "Valor: <b>R$ $amount,00</b>\n\n";
     $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
-    $msg .= "📋 <b>Instruções:</b>\n";
+    $msg .= "📝 <b>Instruções:</b>\n";
     $msg .= "1. Copie a chave PIX\n";
     $msg .= "2. Abra seu app bancário\n";
-    $msg .= "3. Cole a chave e pague R$ $amount,00\n";
-    $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
-    $msg .= "Seu saldo será adicionado automaticamente!";
+    $msg .= "3. Cole a chave no PIX\n";
+    $msg .= "4. Efetue o pagamento de R$ $amount,00\n";
+    $msg .= "5. Clique em '✅ Já Paguei'\n\n";
+    $msg .= "⏳ Seu plano será ativado em até 5 minutos!";
     
-    sendMessage($chat_id, $msg, getCopyPixKeyboard());
+    sendMessage($chat_id, $msg, getCopyPixKeyboard($amount, $days));
 }
 
 // Webhook handler
