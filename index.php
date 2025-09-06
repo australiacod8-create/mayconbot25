@@ -120,9 +120,14 @@ function processUpdate($update) {
                 'balance' => 0.00,
                 'last_earn' => 0,
                 'referrals' => 0,
+                'referral_points' => 0.00,
                 'ref_code' => substr(md5($chat_id . time()), 0, 8),
                 'referred_by' => null
             ];
+        } else {
+            // Update user info if already exists
+            $users[$chat_id]['name'] = trim("$first_name $last_name");
+            $users[$chat_id]['username'] = $username;
         }
         
         if (strpos($text, '/start') === 0) {
@@ -132,29 +137,34 @@ function processUpdate($update) {
                     if ($user['ref_code'] === $ref && $id != $chat_id) {
                         $users[$chat_id]['referred_by'] = $id;
                         $users[$id]['referrals']++;
-                        $users[$id]['balance'] += 10.00; // Bônus de R$ 10,00 por indicação
-                        sendMessage($id, "🎉 Nova indicação! Bônus de R$ 10,00 adicionado!");
+                        $users[$id]['balance'] += 1.00; // Bônus de R$ 1,00 por indicação
+                        $users[$id]['referral_points'] += 1.00;
+                        sendMessage($id, "🎉 Nova indicação! Bônus de R$ 1,00 adicionado!");
                         break;
                     }
                 }
             }
             
             // Mensagem de boas-vindas
-            $welcome_msg = "Bem-vindo(a) à nossa loja de streaming!\n";
-            $welcome_msg .= "Prepare-se para uma experiência de maratona incrível com seus filmes e séries preferidos. Antes de prosseguir, confira a disponibilidade da conta que você deseja em nosso catálogo.\n\n";
-            $welcome_msg .= "É importante saber que não fazemos reembolsos via PIX, apenas com saldo no bot. Por favor, escolha seu serviço com cuidado.\n\n";
-            $welcome_msg .= "Se não encontrou o que procurava, nosso suporte está à disposição para te ajudar rapidamente. Entre em contato conosco: @Dogdoslinks00.\n\n";
+            $welcome_msg = "BEM VINDO A MELHOR LOJA DE STREAMING! \n\n";
+            $welcome_msg .= "⚠️ Antes de efetuar um pagamento, confira a disponibilidade da conta desejada.\n";
+            $welcome_msg .= "🚫 Não realizamos reembolsos. Caso necessário, oferecemos Gift Cards dentro do bot.\n\n";
+            $welcome_msg .= "Não tem o login desejado contate o nosso suporte ☺\n";
+            $welcome_msg .= "━━━━━━━━━━━━━━━━━━━\n\n";
             
             // Detalhes da conta
             $balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
-            $account_msg = "_________________________________________________\n";
-            $account_msg .= "Detalhes da sua conta:\n\n";
-            $account_msg .= "Nome: " . ($users[$chat_id]['name'] ?: 'Não informado') . "\n\n";
-            $account_msg .= "ID: $chat_id\n\n";
-            $account_msg .= "Saldo: R$ $balance_formatted\n\n";
-            $account_msg .= "Pontos de indicação: 0,00\n\n";
-            $account_msg .= "Pessoas indicadas: " . $users[$chat_id]['referrals'] . "\n";
-            $account_msg .= "_________________________________________________";
+            $referral_points_formatted = number_format($users[$chat_id]['referral_points'], 2, ',', '.');
+            $username_display = $users[$chat_id]['username'] ? '@' . $users[$chat_id]['username'] : 'Não informado';
+            
+            $account_msg = "📝 DETALHES DA SUA CONTA\n\n";
+            $account_msg .= "👤Nome: " . ($users[$chat_id]['name'] ?: 'Não informado') . "\n";
+            $account_msg .= "🔹Usuário: " . $username_display . "\n";
+            $account_msg .= "🆔 Identificação: <code>" . $chat_id . "</code>\n";
+            $account_msg .= "💵 Saldo disponível: R$" . $balance_formatted . "\n";
+            $account_msg .= "🎖️Indicações acumuladas: " . $users[$chat_id]['referrals'] . "\n\n";
+            $account_msg .= "━━━━━━━━━━━━━━━━━━━\n\n";
+            $account_msg .= "Aproveite ao máximo e boas compras!";
             
             // Enviar mensagem de boas-vindas
             sendMessage($chat_id, $welcome_msg);
@@ -175,6 +185,7 @@ function processUpdate($update) {
                 'balance' => 0.00,
                 'last_earn' => 0,
                 'referrals' => 0,
+                'referral_points' => 0.00,
                 'ref_code' => substr(md5($chat_id . time()), 0, 8),
                 'referred_by' => null
             ];
@@ -233,7 +244,17 @@ function processUpdate($update) {
                 
             case 'balance':
                 $balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
-                $msg = "💳 Seu Perfil\nSaldo: R$ {$balance_formatted}\nIndicações: {$users[$chat_id]['referrals']}";
+                $referral_points_formatted = number_format($users[$chat_id]['referral_points'], 2, ',', '.');
+                $username_display = $users[$chat_id]['username'] ? '@' . $users[$chat_id]['username'] : 'Não informado';
+                
+                $msg = "📝 DETALHES DA SUA CONTA\n\n";
+                $msg .= "👤Nome: " . ($users[$chat_id]['name'] ?: 'Não informado') . "\n";
+                $msg .= "🔹Usuário: " . $username_display . "\n";
+                $msg .= "🆔 Identificação: <code>" . $chat_id . "</code>\n";
+                $msg .= "💵 Saldo disponível: R$" . $balance_formatted . "\n";
+                $msg .= "🎖️Indicações acumuladas: " . $users[$chat_id]['referrals'] . "\n";
+                $msg .= "💰 Pontos de indicação: R$" . $referral_points_formatted;
+                
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
@@ -255,7 +276,7 @@ function processUpdate($update) {
                 break;
                 
             case 'referrals':
-                $msg = "👥 Sistema de Indicação\nSeu código: <b>{$users[$chat_id]['ref_code']}</b>\nIndicações: {$users[$chat_id]['referrals']}\nLink de convite: t.me/" . BOT_TOKEN . "?start={$users[$chat_id]['ref_code']}\nR$ 10,00 por indicação!";
+                $msg = "👥 Sistema de Indicação\nSeu código: <b>{$users[$chat_id]['ref_code']}</b>\nIndicações: {$users[$chat_id]['referrals']}\nLink de convite: t.me/" . BOT_TOKEN . "?start={$users[$chat_id]['ref_code']}\nR$ 1,00 por indicação!";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
@@ -275,7 +296,7 @@ function processUpdate($update) {
                 break;
                 
             case 'help':
-                $msg = "❓ Ajuda\n💰 Adicionar saldo: Recarregue via PIX\n👥 Indicar: R$ 10,00/indicação\n🏧 Comprar: Mín R$ 10,00\nUse os botões abaixo para navegar!";
+                $msg = "❓ Ajuda\n💰 Adicionar saldo: Recarregue via PIX\n👥 Indicar: R$ 1,00/indicação\n🏧 Comprar: Mín R$ 10,00\nUse os botões abaixo para navegar!";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
         }
