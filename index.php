@@ -1,11 +1,10 @@
-[file name]: index.php
-[file content begin]
 <?php
 // Bot configuration
 define('BOT_TOKEN', getenv('BOT_TOKEN') ?: 'Coloque_Seu_Token_Aqui');
 define('API_URL', 'https://api.telegram.org/bot' . BOT_TOKEN . '/');
 define('USERS_FILE', 'users.json');
 define('ERROR_LOG', 'error.log');
+define('PIX_KEY', '65992779486'); // Sua chave PIX
 
 // Initialize bot (set webhook)
 function initializeBot() {
@@ -99,6 +98,17 @@ function getCopyPixKeyboard($amount) {
         [['text' => '✅ Pagamento Confirmado', 'callback_data' => 'confirm_payment_' . $amount]],
         [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
+}
+
+// Generate a unique transaction ID
+function generateTransactionId() {
+    return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+        mt_rand(0, 0xffff),
+        mt_rand(0, 0x0fff) | 0x4000,
+        mt_rand(0, 0x3fff) | 0x8000,
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+    );
 }
 
 // Process commands and callbacks
@@ -215,7 +225,7 @@ function processUpdate($update) {
                 
             case 'copy_pix':
                 // Envia mensagem com chave PIX copiável
-                $pix_key = "65992779486";
+                $pix_key = PIX_KEY;
                 $msg = "📋 <b>Chave PIX Copiada!</b>\n\n<code>$pix_key</code>\n\n✅ Chave PIX copiada para a área de transferência!\n\nApós realizar o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
                 
                 // Responde ao callback para mostrar "copiado" para o usuário
@@ -325,19 +335,23 @@ function answerCallbackQuery($callback_query_id, $text) {
 
 // Process PIX payment
 function processPixPayment($chat_id, $amount, &$users) {
-    $pix_key = "65992779486";
+    $pix_key = PIX_KEY;
     $amount_formatted = number_format($amount, 2, ',', '.');
+    $transaction_id = generateTransactionId();
     
-    $msg = "💳 <b>PIX Automático - R$ {$amount_formatted}</b>\n\n";
-    $msg .= "Valor: <b>R$ {$amount_formatted}</b>\n";
-    $msg .= "Saldo a receber: <b>R$ {$amount_formatted}</b>\n\n";
-    $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
-    $msg .= "📋 <b>Instruções:</b>\n";
-    $msg .= "1. Clique em '📋 Copiar Chave PIX' para copiar automaticamente\n";
-    $msg .= "2. Abra seu app bancário\n";
-    $msg .= "3. Cole a chave e pague R$ {$amount_formatted}\n";
-    $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
-    $msg .= "Seu saldo será adicionado automaticamente!";
+    $msg = "💳 <b>Comprar Saldo com PIX Automático</b>\n\n";
+    $msg .= "⏰ Expira em: 15 minutos\n";
+    $msg .= "💰 Valor: R$ {$amount_formatted}\n\n";
+    $msg .= "ID da compra: {$transaction_id}\n\n";
+    $msg .= "━━━━━━━━━━━━━━━━━━━\n\n";
+    $msg .= "Este código \"copia e cola\" é válido para apenas 1 pagamento!\n";
+    $msg .= "Ou seja, se você utilizar ele mais de 1 vez para adicionar saldo, você PERDERÁ o saldo e não tem direito a reembolso!\n\n";
+    $msg .= "PIX copia e cola:\n";
+    $msg .= "Clique no código para copiá-lo.\n\n";
+    $msg .= "<b>copiar</b>\n";
+    $msg .= "<code>{$pix_key}</code>\n\n";
+    $msg .= "━━━━━━━━━━━━━━━━━━━\n\n";
+    $msg .= "✅ Após o pagamento ser efetuado, seu saldo será liberado instantaneamente.";
     
     sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
 }
@@ -364,4 +378,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-[file content end]
