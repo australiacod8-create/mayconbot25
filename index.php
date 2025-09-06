@@ -70,6 +70,31 @@ function sendMessage($chat_id, $text, $keyboard = null) {
     }
 }
 
+// Edit message with inline keyboard
+function editMessage($chat_id, $message_id, $text, $keyboard = null) {
+    try {
+        $params = [
+            'chat_id' => $chat_id,
+            'message_id' => $message_id,
+            'text' => $text,
+            'parse_mode' => 'HTML'
+        ];
+        
+        if ($keyboard) {
+            $params['reply_markup'] = json_encode([
+                'inline_keyboard' => $keyboard
+            ]);
+        }
+        
+        $url = API_URL . 'editMessageText?' . http_build_query($params);
+        file_get_contents($url);
+        return true;
+    } catch (Exception $e) {
+        logError("Falha ao editar mensagem: " . $e->getMessage());
+        return false;
+    }
+}
+
 // Main keyboard
 function getMainKeyboard() {
     return [
@@ -92,41 +117,18 @@ function getPixKeyboard() {
 
 // Copy PIX keyboard
 function getCopyPixKeyboard($amount) {
-    $pix_key = "65992779486";
-    
     return [
-        [[
-            'text' => '📋 Copiar Chave PIX', 
-            'callback_data' => 'show_copy_message'
-        ]],
-        [[
-            'text' => '✅ Pagamento Confirmado', 
-            'callback_data' => 'confirm_payment_' . $amount
-        ]],
-        [[
-            'text' => '⬅️ Voltar', 
-            'callback_data' => 'back'
-        ]]
+        [['text' => '📋 Mostrar Chave PIX para Copiar', 'callback_data' => 'show_pix_key']],
+        [['text' => '✅ Pagamento Confirmado', 'callback_data' => 'confirm_payment_' . $amount]],
+        [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
 }
 
-// Keyboard para copiar a chave PIX
-function getPixCopyKeyboard() {
-    $pix_key = "65992779486";
-    
+// PIX Key display keyboard
+function getPixKeyKeyboard($amount) {
     return [
-        [[
-            'text' => '📋 Copiar Chave PIX', 
-            'copy_text' => $pix_key
-        ]],
-        [[
-            'text' => '✅ Pagamento Confirmado', 
-            'callback_data' => 'back_to_payment'
-        ]],
-        [[
-            'text' => '⬅️ Voltar', 
-            'callback_data' => 'back'
-        ]]
+        [['text' => '✅ Já copiei a chave', 'callback_data' => 'pix_copied_' . $amount]],
+        [['text' => '⬅️ Voltar', 'callback_data' => 'back_to_payment_' . $amount]]
     ];
 }
 
@@ -189,43 +191,59 @@ function processUpdate($update) {
                 break;
                 
             case $data === 'pix_10':
-                processPixPayment($chat_id, 10.00, $users);
+                processPixPayment($chat_id, 10.00, $users, $message_id);
                 break;
                 
             case $data === 'pix_20':
-                processPixPayment($chat_id, 20.00, $users);
+                processPixPayment($chat_id, 20.00, $users, $message_id);
                 break;
                 
             case $data === 'pix_50':
-                processPixPayment($chat_id, 50.00, $users);
+                processPixPayment($chat_id, 50.00, $users, $message_id);
                 break;
                 
             case $data === 'pix_100':
-                processPixPayment($chat_id, 100.00, $users);
+                processPixPayment($chat_id, 100.00, $users, $message_id);
                 break;
                 
-            case $data === 'show_copy_message':
-                // Mostra mensagem com botão de copiar funcional
+            case $data === 'show_pix_key':
+                // Mostra a chave PIX de forma destacada para o usuário copiar manualmente
                 $pix_key = "65992779486";
-                $msg = "📋 <b>Clique no botão abaixo para copiar a Chave PIX:</b>\n\n<code>$pix_key</code>\n\nApós copiar e realizar o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
+                $msg = "📋 <b>CHAVE PIX PARA COPIAR:</b>\n\n";
+                $msg .= "👉 <code>$pix_key</code> 👈\n\n";
+                $msg .= "📋 <b>Como copiar:</b>\n";
+                $msg .= "1. Toque e segure no código acima\n";
+                $msg .= "2. Selecione 'Copiar' no menu\n";
+                $msg .= "3. Abra seu app bancário\n";
+                $msg .= "4. Cole a chave e realize o pagamento\n";
+                $msg .= "5. Volte aqui e confirme o pagamento\n\n";
+                $msg .= "💰 <b>Após pagar, clique em '✅ Já copiei a chave'</b>";
                 
-                answerCallbackQuery($update['callback_query']['id'], "Clique no botão '📋 Copiar Chave PIX' abaixo para copiar!");
-                sendMessage($chat_id, $msg, getPixCopyKeyboard());
+                answerCallbackQuery($update['callback_query']['id'], "Chave PIX exibida! Toque e segure no código para copiar.");
+                sendMessage($chat_id, $msg, getPixKeyKeyboard(0));
                 break;
                 
-            case $data === 'back_to_payment':
-                // Volta para a mensagem de pagamento original
-                $pix_key = "65992779486";
-                $msg = "💳 <b>PIX Automático</b>\n\n";
-                $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
-                $msg .= "📋 <b>Instruções:</b>\n";
-                $msg .= "1. Clique em '📋 Copiar Chave PIX' para copiar\n";
-                $msg .= "2. Abra seu app bancário\n";
-                $msg .= "3. Cole a chave e realize o pagamento\n";
-                $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
+            case strpos($data, 'pix_copied_') === 0:
+                $amount = floatval(str_replace('pix_copied_', '', $data));
+                $amount_formatted = number_format($amount, 2, ',', '.');
+                
+                $msg = "✅ <b>Ótimo! Você copiou a chave PIX.</b>\n\n";
+                $msg .= "💰 Valor: R$ {$amount_formatted}\n";
+                $msg .= "🔑 Chave PIX: <code>65992779486</code>\n\n";
+                $msg .= "📋 <b>Próximos passos:</b>\n";
+                $msg .= "1. Abra seu app bancário\n";
+                $msg .= "2. Cole a chave PIX\n";
+                $msg .= "3. Realize o pagamento de R$ {$amount_formatted}\n";
+                $msg .= "4. Volte aqui e clique em '✅ Pagamento Confirmado'\n\n";
                 $msg .= "Seu saldo será adicionado automaticamente!";
                 
-                sendMessage($chat_id, $msg, getCopyPixKeyboard(0));
+                answerCallbackQuery($update['callback_query']['id'], "Agora é só pagar e confirmar!");
+                sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
+                break;
+                
+            case strpos($data, 'back_to_payment_') === 0:
+                $amount = floatval(str_replace('back_to_payment_', '', $data));
+                processPixPayment($chat_id, $amount, $users, $message_id);
                 break;
                 
             case strpos($data, 'confirm_payment_') === 0:
@@ -238,7 +256,13 @@ function processUpdate($update) {
                 $amount_formatted = number_format($amount, 2, ',', '.');
                 $new_balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
                 
-                $msg = "✅ <b>Pagamento confirmado!</b>\n\nValor: R$ {$amount_formatted}\nSaldo adicionado com sucesso!\nSeu novo saldo: R$ {$new_balance_formatted}";
+                $msg = "✅ <b>Pagamento confirmado!</b>\n\n";
+                $msg .= "💰 Valor: R$ {$amount_formatted}\n";
+                $msg .= "💳 Saldo adicionado com sucesso!\n";
+                $msg .= "📊 Seu novo saldo: R$ {$new_balance_formatted}\n\n";
+                $msg .= "Obrigado pela sua recarga!";
+                
+                answerCallbackQuery($update['callback_query']['id'], "Pagamento confirmado! Saldo adicionado.");
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
@@ -319,22 +343,26 @@ function answerCallbackQuery($callback_query_id, $text) {
 }
 
 // Process PIX payment
-function processPixPayment($chat_id, $amount, &$users) {
+function processPixPayment($chat_id, $amount, &$users, $message_id = null) {
     $pix_key = "65992779486";
     $amount_formatted = number_format($amount, 2, ',', '.');
     
     $msg = "💳 <b>PIX Automático - R$ {$amount_formatted}</b>\n\n";
-    $msg .= "Valor: <b>R$ {$amount_formatted}</b>\n";
-    $msg .= "Saldo a receber: <b>R$ {$amount_formatted}</b>\n\n";
-    $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
+    $msg .= "💰 Valor: <b>R$ {$amount_formatted}</b>\n";
+    $msg .= "💳 Saldo a receber: <b>R$ {$amount_formatted}</b>\n\n";
     $msg .= "📋 <b>Instruções:</b>\n";
-    $msg .= "1. Clique em '📋 Copiar Chave PIX' para copiar automaticamente\n";
-    $msg .= "2. Abra seu app bancário\n";
-    $msg .= "3. Cole a chave e pague R$ {$amount_formatted}\n";
-    $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
+    $msg .= "1. Clique em '📋 Mostrar Chave PIX para Copiar'\n";
+    $msg .= "2. Toque e segure no código para copiar\n";
+    $msg .= "3. Abra seu app bancário e cole a chave\n";
+    $msg .= "4. Realize o pagamento\n";
+    $msg .= "5. Volte e confirme o pagamento\n\n";
     $msg .= "Seu saldo será adicionado automaticamente!";
     
-    sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
+    if ($message_id) {
+        editMessage($chat_id, $message_id, $msg, getCopyPixKeyboard($amount));
+    } else {
+        sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
+    }
 }
 
 // Webhook handler
