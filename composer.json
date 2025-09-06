@@ -1,8 +1,7 @@
 {
     "name": "telegram-bot",
     "require": {
-        "php": ">=8.0",
-        "mercadopago/dx-php": "^2.5"
+        "php": ">=8.0"
     },
     "scripts": {
         "start": "php index.php"
