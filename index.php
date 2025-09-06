@@ -91,10 +91,10 @@ function getPixKeyboard() {
 }
 
 // Copy PIX keyboard
-function getCopyPixKeyboard() {
+function getCopyPixKeyboard($amount) {
     return [
-        [['text' => '📋 Copiar PIX', 'callback_data' => 'copy_pix']],
-        [['text' => '✅ Pagamento Confirmado', 'callback_data' => 'confirm_payment']],
+        [['text' => '📋 Copiar Chave PIX', 'callback_data' => 'copy_pix']],
+        [['text' => '✅ Pagamento Confirmado', 'callback_data' => 'confirm_payment_' . $amount]],
         [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
 }
@@ -139,6 +139,7 @@ function processUpdate($update) {
     } elseif (isset($update['callback_query'])) {
         $chat_id = $update['callback_query']['message']['chat']['id'];
         $data = $update['callback_query']['data'];
+        $message_id = $update['callback_query']['message']['message_id'];
         
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
@@ -173,13 +174,26 @@ function processUpdate($update) {
                 break;
                 
             case 'copy_pix':
-                $msg = "📋 <b>Chave PIX Copiada!</b>\n\n65992779486\n\nApós realizar o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
-                sendMessage($chat_id, $msg, getCopyPixKeyboard());
+                // Envia mensagem com chave PIX copiável
+                $pix_key = "65992779486";
+                $msg = "📋 <b>Chave PIX Copiada!</b>\n\n<code>$pix_key</code>\n\n✅ Chave PIX copiada para a área de transferência!\n\nApós realizar o pagamento, clique em '✅ Pagamento Confirmado' para adicionar o saldo automaticamente.";
+                
+                // Responde ao callback para mostrar "copiado" para o usuário
+                answerCallbackQuery($update['callback_query']['id'], "Chave PIX copiada! ✅");
+                sendMessage($chat_id, $msg);
                 break;
                 
-            case 'confirm_payment':
-                // O saldo é adicionado manualmente após confirmação do pagamento
-                $msg = "✅ <b>Pagamento confirmado!</b>\n\nSeu saldo será adicionado em breve. Caso não receba em 5 minutos, entre em contato com o suporte.";
+            case strpos($data, 'confirm_payment_') === 0:
+                // Extrai o valor do pagamento do callback_data
+                $amount = floatval(str_replace('confirm_payment_', '', $data));
+                
+                // Adiciona o saldo ao usuário
+                $users[$chat_id]['balance'] += $amount;
+                
+                $amount_formatted = number_format($amount, 2, ',', '.');
+                $new_balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
+                
+                $msg = "✅ <b>Pagamento confirmado!</b>\n\nValor: R$ {$amount_formatted}\nSaldo adicionado com sucesso!\nSeu novo saldo: R$ {$new_balance_formatted}";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
@@ -241,6 +255,24 @@ function processUpdate($update) {
     }
 }
 
+// Answer callback query (para mostrar feedback ao usuário)
+function answerCallbackQuery($callback_query_id, $text) {
+    try {
+        $params = [
+            'callback_query_id' => $callback_query_id,
+            'text' => $text,
+            'show_alert' => false
+        ];
+        
+        $url = API_URL . 'answerCallbackQuery?' . http_build_query($params);
+        file_get_contents($url);
+        return true;
+    } catch (Exception $e) {
+        logError("Falha ao responder callback: " . $e->getMessage());
+        return false;
+    }
+}
+
 // Process PIX payment
 function processPixPayment($chat_id, $amount, &$users) {
     $pix_key = "65992779486";
@@ -251,13 +283,13 @@ function processPixPayment($chat_id, $amount, &$users) {
     $msg .= "Saldo a receber: <b>R$ {$amount_formatted}</b>\n\n";
     $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
     $msg .= "📋 <b>Instruções:</b>\n";
-    $msg .= "1. Copie a chave PIX\n";
+    $msg .= "1. Clique em '📋 Copiar Chave PIX' para copiar automaticamente\n";
     $msg .= "2. Abra seu app bancário\n";
     $msg .= "3. Cole a chave e pague R$ {$amount_formatted}\n";
     $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
     $msg .= "Seu saldo será adicionado automaticamente!";
     
-    sendMessage($chat_id, $msg, getCopyPixKeyboard());
+    sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
 }
 
 // Webhook handler
