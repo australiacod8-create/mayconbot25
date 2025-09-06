@@ -82,10 +82,10 @@ function getMainKeyboard() {
 // PIX keyboard
 function getPixKeyboard() {
     return [
-        [['text' => 'R$ 10,00 (100 pontos)', 'callback_data' => 'pix_10']],
-        [['text' => 'R$ 20,00 (200 pontos)', 'callback_data' => 'pix_20']],
-        [['text' => 'R$ 50,00 (500 pontos)', 'callback_data' => 'pix_50']],
-        [['text' => 'R$ 100,00 (1000 pontos)', 'callback_data' => 'pix_100']],
+        [['text' => 'R$ 10,00', 'callback_data' => 'pix_10']],
+        [['text' => 'R$ 20,00', 'callback_data' => 'pix_20']],
+        [['text' => 'R$ 50,00', 'callback_data' => 'pix_50']],
+        [['text' => 'R$ 100,00', 'callback_data' => 'pix_100']],
         [['text' => '⬅️ Voltar', 'callback_data' => 'back']]
     ];
 }
@@ -110,7 +110,7 @@ function processUpdate($update) {
         // Create new user if doesn't exist
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
-                'balance' => 0,
+                'balance' => 0.00,
                 'last_earn' => 0,
                 'referrals' => 0,
                 'ref_code' => substr(md5($chat_id . time()), 0, 8),
@@ -125,14 +125,14 @@ function processUpdate($update) {
                     if ($user['ref_code'] === $ref && $id != $chat_id) {
                         $users[$chat_id]['referred_by'] = $id;
                         $users[$id]['referrals']++;
-                        $users[$id]['balance'] += 50; // Referral bonus
-                        sendMessage($id, "🎉 Nova indicação! Bônus de 50 pontos!");
+                        $users[$id]['balance'] += 10.00; // Bônus de R$ 10,00 por indicação
+                        sendMessage($id, "🎉 Nova indicação! Bônus de R$ 10,00 adicionado!");
                         break;
                     }
                 }
             }
             
-            $msg = "Bem-vindo ao Bot de Ganhos!\nGanhe pontos, convide amigos e compre itens!\nSeu código de indicação: <b>{$users[$chat_id]['ref_code']}</b>";
+            $msg = "Bem-vindo ao Bot de Ganhos!\nGanhe dinheiro, convide amigos e compre itens!\nSeu código de indicação: <b>{$users[$chat_id]['ref_code']}</b>";
             sendMessage($chat_id, $msg, getMainKeyboard());
         }
         
@@ -142,7 +142,7 @@ function processUpdate($update) {
         
         if (!isset($users[$chat_id])) {
             $users[$chat_id] = [
-                'balance' => 0,
+                'balance' => 0.00,
                 'last_earn' => 0,
                 'referrals' => 0,
                 'ref_code' => substr(md5($chat_id . time()), 0, 8),
@@ -157,19 +157,19 @@ function processUpdate($update) {
                 break;
                 
             case 'pix_10':
-                processPixPayment($chat_id, 10, 100, $users);
+                processPixPayment($chat_id, 10.00, $users);
                 break;
                 
             case 'pix_20':
-                processPixPayment($chat_id, 20, 200, $users);
+                processPixPayment($chat_id, 20.00, $users);
                 break;
                 
             case 'pix_50':
-                processPixPayment($chat_id, 50, 500, $users);
+                processPixPayment($chat_id, 50.00, $users);
                 break;
                 
             case 'pix_100':
-                processPixPayment($chat_id, 100, 1000, $users);
+                processPixPayment($chat_id, 100.00, $users);
                 break;
                 
             case 'copy_pix':
@@ -178,6 +178,7 @@ function processUpdate($update) {
                 break;
                 
             case 'confirm_payment':
+                // O saldo é adicionado manualmente após confirmação do pagamento
                 $msg = "✅ <b>Pagamento confirmado!</b>\n\nSeu saldo será adicionado em breve. Caso não receba em 5 minutos, entre em contato com o suporte.";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
@@ -188,42 +189,50 @@ function processUpdate($update) {
                 break;
                 
             case 'balance':
-                $msg = "💳 Seu Perfil\nPontos: {$users[$chat_id]['balance']}\nIndicações: {$users[$chat_id]['referrals']}";
+                $balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
+                $msg = "💳 Seu Perfil\nSaldo: R$ {$balance_formatted}\nIndicações: {$users[$chat_id]['referrals']}";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
             case 'leaderboard':
-                $sorted = array_column($users, 'balance');
+                $sorted = [];
+                foreach ($users as $id => $user) {
+                    $sorted[$id] = $user['balance'];
+                }
                 arsort($sorted);
                 $top = array_slice($sorted, 0, 5, true);
                 $msg = "🏆 Top Ganhadores\n";
                 $i = 1;
-                foreach ($top as $id => $bal) {
-                    $msg .= "$i. Usuário $id: $bal pontos\n";
+                foreach ($top as $id => $balance) {
+                    $balance_formatted = number_format($balance, 2, ',', '.');
+                    $msg .= "$i. Usuário $id: R$ {$balance_formatted}\n";
                     $i++;
                 }
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
             case 'referrals':
-                $msg = "👥 Sistema de Indicação\nSeu código: <b>{$users[$chat_id]['ref_code']}</b>\nIndicações: {$users[$chat_id]['referrals']}\nLink de convite: t.me/" . BOT_TOKEN . "?start={$users[$chat_id]['ref_code']}\n50 pontos por indicação!";
+                $msg = "👥 Sistema de Indicação\nSeu código: <b>{$users[$chat_id]['ref_code']}</b>\nIndicações: {$users[$chat_id]['referrals']}\nLink de convite: t.me/" . BOT_TOKEN . "?start={$users[$chat_id]['ref_code']}\nR$ 10,00 por indicação!";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
             case 'withdraw':
-                $min = 100;
+                $min = 10.00;
                 if ($users[$chat_id]['balance'] < $min) {
-                    $msg = "🏧 Comprar\nMínimo: $min pontos\nSeu saldo: {$users[$chat_id]['balance']}\nFaltam " . ($min - $users[$chat_id]['balance']) . " pontos!";
+                    $balance_formatted = number_format($users[$chat_id]['balance'], 2, ',', '.');
+                    $missing = number_format($min - $users[$chat_id]['balance'], 2, ',', '.');
+                    $msg = "🏧 Comprar\nMínimo: R$ " . number_format($min, 2, ',', '.') . "\nSeu saldo: R$ {$balance_formatted}\nFaltam R$ {$missing}!";
                 } else {
                     $amount = $users[$chat_id]['balance'];
-                    $users[$chat_id]['balance'] = 0;
-                    $msg = "🏧 Compra de $amount pontos realizada!\nSeus itens serão entregues em breve.";
+                    $users[$chat_id]['balance'] = 0.00;
+                    $amount_formatted = number_format($amount, 2, ',', '.');
+                    $msg = "🏧 Compra de R$ {$amount_formatted} realizada!\nSeus itens serão entregues em breve.";
                 }
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
                 
             case 'help':
-                $msg = "❓ Ajuda\n💰 Adicionar saldo: Recarregue via PIX\n👥 Indicar: 50 pontos/indicação\n🏧 Comprar: Mín 100 pontos\nUse os botões abaixo para navegar!";
+                $msg = "❓ Ajuda\n💰 Adicionar saldo: Recarregue via PIX\n👥 Indicar: R$ 10,00/indicação\n🏧 Comprar: Mín R$ 10,00\nUse os botões abaixo para navegar!";
                 sendMessage($chat_id, $msg, getMainKeyboard());
                 break;
         }
@@ -233,16 +242,18 @@ function processUpdate($update) {
 }
 
 // Process PIX payment
-function processPixPayment($chat_id, $amount, $points, &$users) {
+function processPixPayment($chat_id, $amount, &$users) {
     $pix_key = "65992779486";
-    $msg = "💳 <b>PIX Automático - R$ $amount,00</b>\n\n";
-    $msg .= "Valor: <b>R$ $amount,00</b>\n";
-    $msg .= "Pontos a receber: <b>$points</b>\n\n";
+    $amount_formatted = number_format($amount, 2, ',', '.');
+    
+    $msg = "💳 <b>PIX Automático - R$ {$amount_formatted}</b>\n\n";
+    $msg .= "Valor: <b>R$ {$amount_formatted}</b>\n";
+    $msg .= "Saldo a receber: <b>R$ {$amount_formatted}</b>\n\n";
     $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
     $msg .= "📋 <b>Instruções:</b>\n";
     $msg .= "1. Copie a chave PIX\n";
     $msg .= "2. Abra seu app bancário\n";
-    $msg .= "3. Cole a chave e pague R$ $amount,00\n";
+    $msg .= "3. Cole a chave e pague R$ {$amount_formatted}\n";
     $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
     $msg .= "Seu saldo será adicionado automaticamente!";
     
