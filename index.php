@@ -153,18 +153,25 @@ function processUpdate($update) {
         if (strpos($data, 'confirm_payment_') === 0) {
             $amount = str_replace('confirm_payment_', '', $data);
             $users[$chat_id]['balance'] += (float)$amount;
-            $msg = "✅ <b>Pagamento confirmado!</b>\n\nSaldo de R$ $amount,00 adicionado com sucesso!";
+            $msg = "✅ <b>Pagamento confirmado!</b>\n\nSaldo de R$ $amount,00 adicionado com sucesso!\nNovo saldo: R$ " . number_format($users[$chat_id]['balance'], 2, ',', '.');
             sendMessage($chat_id, $msg, getMainKeyboard());
         }
         elseif (strpos($data, 'copy_pix_') === 0) {
             $amount = str_replace('copy_pix_', '', $data);
-            $msg = "📋 <b>Chave PIX:</b> <code>65992779486</code>\n\n";
-            $msg .= "💡 <b>Para pagar:</b>\n";
-            $msg .= "1. Abra seu app bancário\n";
-            $msg .= "2. Cole a chave PIX\n";
-            $msg .= "3. Valor: <b>R$ $amount,00</b>\n";
-            $msg .= "4. Efetue o pagamento\n\n";
+            $pix_key = "65992779486";
+            
+            // Enviar mensagem com a chave PIX que pode ser copiada
+            $msg = "📋 <b>Chave PIX para copiar:</b>\n\n";
+            $msg .= "<code>$pix_key</code>\n\n";
+            $msg .= "💡 <b>Instruções:</b>\n";
+            $msg .= "1. Toque e segure na chave PIX acima\n";
+            $msg .= "2. Selecione 'Copiar'\n";
+            $msg .= "3. Abra seu app bancário\n";
+            $msg .= "4. Cole a chave no campo PIX\n";
+            $msg .= "5. Valor: <b>R$ $amount,00</b>\n";
+            $msg .= "6. Efetue o pagamento\n\n";
             $msg .= "Após pagar, clique em '✅ Pagamento Confirmado'";
+            
             sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
         }
         else {
@@ -252,10 +259,12 @@ function processPixPayment($chat_id, $amount, &$users) {
     $msg .= "Saldo a receber: <b>R$ " . number_format($amount, 2, ',', '.') . "</b>\n\n";
     $msg .= "Chave PIX: <code>$pix_key</code>\n\n";
     $msg .= "📋 <b>Instruções:</b>\n";
-    $msg .= "1. Copie a chave PIX\n";
-    $msg .= "2. Abra seu app bancário\n";
-    $msg .= "3. Cole a chave e pague R$ " . number_format($amount, 2, ',', '.') . "\n";
-    $msg .= "4. Clique em '✅ Pagamento Confirmado'\n\n";
+    $msg .= "1. Toque e segure na chave PIX acima\n";
+    $msg .= "2. Selecione 'Copiar'\n";
+    $msg .= "3. Abra seu app bancário\n";
+    $msg .= "4. Cole a chave no campo PIX\n";
+    $msg .= "5. Efetue o pagamento de R$ " . number_format($amount, 2, ',', '.') . "\n";
+    $msg .= "6. Clique em '✅ Pagamento Confirmado'\n\n";
     $msg .= "Seu saldo será adicionado automaticamente!";
     
     sendMessage($chat_id, $msg, getCopyPixKeyboard($amount));
