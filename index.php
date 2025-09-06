@@ -73,9 +73,9 @@ function sendMessage($chat_id, $text, $keyboard = null) {
 // Main keyboard
 function getMainKeyboard() {
     return [
-        [['text' => '💰 Ganhar', 'callback_data' => 'earn'], ['text' => '💳 Saldo', 'callback_data' => 'balance']],
+        [['text' => '💰 Adicionar saldo', 'callback_data' => 'earn'], ['text' => '💳 Perfil', 'callback_data' => 'balance']],
         [['text' => '🏆 Ranking', 'callback_data' => 'leaderboard'], ['text' => '👥 Indicações', 'callback_data' => 'referrals']],
-        [['text' => '🏧 Sacar', 'callback_data' => 'withdraw'], ['text' => '❓ Ajuda', 'callback_data' => 'help']]
+        [['text' => '🏧 Comprar', 'callback_data' => 'withdraw'], ['text' => '❓ Ajuda', 'callback_data' => 'help']]
     ];
 }
 
@@ -112,7 +112,7 @@ function processUpdate($update) {
                 }
             }
             
-            $msg = "Bem-vindo ao Bot de Ganhos!\nGanhe pontos, convide amigos e retire seus ganhos!\nSeu código de indicação: <b>{$users[$chat_id]['ref_code']}</b>";
+            $msg = "Bem-vindo ao Bot de Ganhos!\nGanhe pontos, convide amigos e compre itens!\nSeu código de indicação: <b>{$users[$chat_id]['ref_code']}</b>";
             sendMessage($chat_id, $msg, getMainKeyboard());
         }
         
@@ -135,17 +135,17 @@ function processUpdate($update) {
                 $time_diff = time() - $users[$chat_id]['last_earn'];
                 if ($time_diff < 60) {
                     $remaining = 60 - $time_diff;
-                    $msg = "⏳ Aguarde $remaining segundos para ganhar novamente!";
+                    $msg = "⏳ Aguarde $remaining segundos para adicionar saldo novamente!";
                 } else {
                     $earn = 10;
                     $users[$chat_id]['balance'] += $earn;
                     $users[$chat_id]['last_earn'] = time();
-                    $msg = "✅ Você ganhou $earn pontos!\nNovo saldo: {$users[$chat_id]['balance']}";
+                    $msg = "✅ Você adicionou $earn pontos ao seu saldo!\nNovo saldo: {$users[$chat_id]['balance']}";
                 }
                 break;
                 
             case 'balance':
-                $msg = "💳 Seu Saldo\nPontos: {$users[$chat_id]['balance']}\nIndicações: {$users[$chat_id]['referrals']}";
+                $msg = "💳 Seu Perfil\nPontos: {$users[$chat_id]['balance']}\nIndicações: {$users[$chat_id]['referrals']}";
                 break;
                 
             case 'leaderboard':
@@ -167,16 +167,16 @@ function processUpdate($update) {
             case 'withdraw':
                 $min = 100;
                 if ($users[$chat_id]['balance'] < $min) {
-                    $msg = "🏧 Saque\nMínimo: $min pontos\nSeu saldo: {$users[$chat_id]['balance']}\nFaltam " . ($min - $users[$chat_id]['balance']) . " pontos!";
+                    $msg = "🏧 Comprar\nMínimo: $min pontos\nSeu saldo: {$users[$chat_id]['balance']}\nFaltam " . ($min - $users[$chat_id]['balance']) . " pontos!";
                 } else {
                     $amount = $users[$chat_id]['balance'];
                     $users[$chat_id]['balance'] = 0;
-                    $msg = "🏧 Saque de $amount pontos solicitado!\nNossa equipe processará em breve.";
+                    $msg = "🏧 Compra de $amount pontos realizada!\nSeus itens serão entregues em breve.";
                 }
                 break;
                 
             case 'help':
-                $msg = "❓ Ajuda\n💰 Ganhar: Receba 10 pontos/min\n👥 Indicar: 50 pontos/indicação\n🏧 Sacar: Mín 100 pontos\nUse os botões abaixo para navegar!";
+                $msg = "❓ Ajuda\n💰 Adicionar saldo: Receba 10 pontos/min\n👥 Indicar: 50 pontos/indicação\n🏧 Comprar: Mín 100 pontos\nUse os botões abaixo para navegar!";
                 break;
         }
         
