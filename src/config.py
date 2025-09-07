@@ -4,9 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # Configurações do Pagar.me
-    PAGARME_API_KEY = os.getenv('PAGARME_API_KEY')
-    PAGARME_ENCRYPTION_KEY = os.getenv('PAGARME_ENCRYPTION_KEY')
+    # Configurações do Mercado Pago (substitui Pagar.me)
+    MERCADOPAGO_ACCESS_TOKEN = os.getenv('MERCADOPAGO_ACCESS_TOKEN')
     
     # Configurações do Webhook
     WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET')
