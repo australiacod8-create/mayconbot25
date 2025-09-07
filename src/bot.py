@@ -58,7 +58,7 @@ async def pix_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         
         # Salvar informações do pagamento
-        save_payment_info(user.id, order_id, pix_data['charge_id'], amount)
+        save_payment_info(user.id, order_id, pix_data['payment_id'], amount)
         
         # Enviar QR Code para o usuário
         message = f"💳 *Pagamento PIX*\n\n"
