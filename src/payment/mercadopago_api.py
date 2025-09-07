@@ -10,13 +10,19 @@ class MercadoPagoAPI:
     def create_pix_payment(self, amount, description, order_id):
         """Cria um pagamento PIX"""
         payload = {
-            "transaction_amount": amount,
+            "transaction_amount": float(amount),
             "description": description,
             "payment_method_id": "pix",
             "external_reference": order_id,
             "notification_url": f"{Config.BASE_URL}/webhook/mercadopago",
             "payer": {
-                "email": "customer@email.com"
+                "email": "customer@email.com",
+                "first_name": "Customer",
+                "last_name": "Silva",
+                "identification": {
+                    "type": "CPF",
+                    "number": "12345678909"
+                }
             }
         }
         
@@ -33,6 +39,8 @@ class MercadoPagoAPI:
             return response.json()
         except requests.exceptions.RequestException as e:
             print(f"Erro ao criar pagamento PIX: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Resposta do erro: {e.response.text}")
             return None
     
     def get_payment(self, payment_id):
