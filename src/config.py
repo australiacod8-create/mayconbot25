@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # Configurações do Mercado Pago (substitui Pagar.me)
+    # Configurações do Mercado Pago
     MERCADOPAGO_ACCESS_TOKEN = os.getenv('MERCADOPAGO_ACCESS_TOKEN')
     
     # Configurações do Webhook
