@@ -9,6 +9,7 @@ app = Flask(__name__)
 
 # Variável global para controlar o bot
 bot_thread = None
+bot_started = False
 
 @app.route('/')
 def home():
@@ -32,16 +33,19 @@ def run_bot():
 
 def start_bot():
     """Inicia o bot em uma thread separada"""
-    global bot_thread
-    if bot_thread is None or not bot_thread.is_alive():
+    global bot_thread, bot_started
+    if not bot_started and (bot_thread is None or not bot_thread.is_alive()):
         bot_thread = threading.Thread(target=run_bot, daemon=True)
         bot_thread.start()
+        bot_started = True
         print("✅ Bot iniciado em thread separada")
 
-# Inicia o bot quando o aplicativo Flask iniciar
-@app.before_first_request
-def initialize():
-    start_bot()
+# Inicia o bot quando a primeira requisição chegar
+@app.before_request
+def initialize_bot():
+    global bot_started
+    if not bot_started:
+        start_bot()
 
 # Manipulador para graceful shutdown
 def shutdown_handler(signum, frame):
