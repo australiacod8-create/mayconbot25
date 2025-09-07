@@ -7,24 +7,28 @@ import os
 
 app = Flask(__name__)
 
-# Vari�vel global para controlar o bot
+# Variável global para controlar o bot
 bot_thread = None
 
 @app.route('/')
 def home():
-    return "Servidor e bot est�o rodando!"
+    return "Servidor e bot estão rodando!"
 
 @app.route('/health')
 def health():
     return "OK", 200
 
 def run_bot():
-    """Fun��o para executar o bot em uma thread separada"""
+    """Função para executar o bot em uma thread separada"""
     try:
-        print("Iniciando bot do Telegram...")
+        print("🚀 Iniciando bot do Telegram...")
+        print("✅ Função run_bot() foi chamada!")
         asyncio.run(bot_main())
+        print("✅ Bot iniciado com sucesso!")
     except Exception as e:
-        print(f"Erro no bot: {e}")
+        print(f"❌ Erro no bot: {e}")
+        import traceback
+        traceback.print_exc()
 
 def start_bot():
     """Inicia o bot em uma thread separada"""
@@ -32,7 +36,7 @@ def start_bot():
     if bot_thread is None or not bot_thread.is_alive():
         bot_thread = threading.Thread(target=run_bot, daemon=True)
         bot_thread.start()
-        print("Bot iniciado em thread separada")
+        print("✅ Bot iniciado em thread separada")
 
 # Inicia o bot quando o aplicativo Flask iniciar
 @app.before_first_request
@@ -41,7 +45,7 @@ def initialize():
 
 # Manipulador para graceful shutdown
 def shutdown_handler(signum, frame):
-    print("Recebido sinal de desligamento, encerrando aplica��o...")
+    print("Recebido sinal de desligamento, encerrando aplicação...")
     exit(0)
 
 if __name__ == '__main__':
