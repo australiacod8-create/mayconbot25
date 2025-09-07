@@ -5,7 +5,4 @@ flask>=2.3.0
 cryptography==3.3.2
 python-telegram-bot==20.0a0
 gunicorn==20.1.0
-<<<<<<< HEAD
 gunicorn==20.1.0
-=======
->>>>>>> 9f3e0deeec6e56ce66d70a82e7a40f7db4fe715b
