@@ -45,3 +45,8 @@ async def set_webhook():
     except Exception as e:
         logging.error(f"❌ Erro ao configurar webhook: {e}")
         return False
+
+if __name__ == "__main__":
+    # Para execução local (não será usado no Render)
+    import asyncio
+    asyncio.run(set_webhook())

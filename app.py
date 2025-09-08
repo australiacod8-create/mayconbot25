@@ -1,7 +1,9 @@
-from flask import Flask, request
+from telegram import Update
+from flask import Flask, request, jsonify
 import asyncio
-from src.bot import setup_application, set_webhook
+from src.bot import setup_application
 import logging
+import os
 
 app = Flask(__name__)
 
@@ -17,27 +19,27 @@ def health():
     return "OK", 200
 
 @app.route('/webhook', methods=['POST'])
-async def webhook():
+def webhook():
     """Endpoint para receber updates do Telegram"""
     try:
         global bot_application
-        if not bot_application:
-            bot_application = await setup_application()
+        if bot_application is None:
+            return 'Bot não inicializado', 500
         
-        update = Update.de_json(await request.get_json(), bot_application.bot)
-        await bot_application.process_update(update)
+        # Processar update
+        update = Update.de_json(request.get_json(), bot_application.bot)
+        asyncio.run(bot_application.process_update(update))
         return 'ok'
     except Exception as e:
         logging.error(f"Erro no webhook: {e}")
         return 'error', 500
 
 @app.before_request
-async def initialize_bot():
+def initialize_bot():
     """Inicializa o bot se necessário"""
     global bot_application
-    if not bot_application:
-        bot_application = await setup_application()
-        await set_webhook()
+    if bot_application is None:
+        bot_application = asyncio.run(setup_application())
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
