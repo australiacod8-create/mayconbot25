@@ -2,7 +2,7 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-from aiohttp import web
+from flask import Flask, request
 
 # Configurar logging
 logging.basicConfig(
@@ -11,16 +11,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Inicializar aplicação Flask
+app = Flask(__name__)
+
+# Configuração da aplicação do Telegram
+application = None
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Responde ao comando /start"""
     user = update.effective_user
     logger.info(f"Usuário {user.first_name} enviou /start")
     await update.message.reply_text(f"Olá {user.first_name}! Bot está funcionando via webhook!")
 
-# Configuração da aplicação
-application = None
-
-async def setup_application():
+def setup_application():
     """Configura a aplicação do bot"""
     global application
     token = os.getenv("BOT_TOKEN")
@@ -32,20 +35,27 @@ async def setup_application():
     application.add_handler(CommandHandler("start", start_command))
     return application
 
-async def webhook_handler(request):
+@app.route('/webhook', methods=['POST'])
+async def webhook():
     """Processa as atualizações do Telegram"""
     try:
-        data = await request.json()
+        data = request.get_json()
         update = Update.de_json(data, application.bot)
         await application.process_update(update)
-        return web.Response(status=200)
+        return '', 200
     except Exception as e:
         logger.error(f"Erro no webhook: {e}")
-        return web.Response(status=500)
+        return '', 500
 
-async def health_check(request):
+@app.route('/health')
+def health_check():
     """Endpoint para verificação de saúde"""
-    return web.Response(text="Bot está funcionando!")
+    return 'Bot está funcionando!'
+
+@app.route('/')
+def index():
+    """Página inicial"""
+    return 'Bot Telegram está rodando!'
 
 async def set_webhook():
     """Configura o webhook"""
@@ -60,30 +70,22 @@ async def set_webhook():
         logger.error(f"❌ Erro ao configurar webhook: {e}")
         return False
 
-async def main():
-    """Função principal"""
-    await setup_application()
-    
-    # Configurar webhook
-    success = await set_webhook()
-    if not success:
-        return
-    
-    # Configurar servidor web
-    app = web.Application()
-    app.router.add_post("/webhook", webhook_handler)
-    app.router.add_get("/health", health_check)
-    
-    port = int(os.environ.get("PORT", 5000))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=port)
-    await site.start()
-    logger.info(f"Servidor iniciado na porta {port}")
-    
-    # Manter o servidor rodando
-    await asyncio.Event().wait()
-
 if __name__ == "__main__":
+    # Configurar aplicação
+    setup_application()
+    
+    # Configurar webhook em segundo plano
+    import threading
     import asyncio
-    asyncio.run(main())
+    
+    def run_async():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(set_webhook())
+    
+    thread = threading.Thread(target=run_async)
+    thread.start()
+    
+    # Iniciar servidor Flask
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
